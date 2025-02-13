@@ -10,7 +10,9 @@ namespace WebApi.MinimalApi.Controllers;
 public class UsersController : Controller
 {
     private readonly IUserRepository userRepository;
+
     private readonly IMapper mapper;
+
     // Чтобы ASP.NET положил что-то в userRepository требуется конфигурация
     public UsersController(IUserRepository userRepository, IMapper mapper)
     {
@@ -18,7 +20,7 @@ public class UsersController : Controller
         this.mapper = mapper;
     }
 
-    [HttpGet("{userId}")]
+    [HttpGet("{userId}", Name = nameof(GetUserById))]
     [Produces("application/json", "application/xml")]
     public ActionResult<UserDto> GetUserById([FromRoute] Guid userId)
     {
@@ -29,8 +31,22 @@ public class UsersController : Controller
     }
 
     [HttpPost]
-    public IActionResult CreateUser([FromBody] object user)
+    [Produces("application/json", "application/xml")]
+    public IActionResult CreateUser([FromBody] UserToCreateDto? userDto)
     {
-        throw new NotImplementedException();
+        if (userDto == null) return BadRequest();
+        if (string.IsNullOrEmpty(userDto.Login))
+            ModelState.AddModelError(nameof(UserToCreateDto.Login), "");
+        else if (!userDto.Login.All(char.IsLetterOrDigit))
+            ModelState.AddModelError(nameof(UserToCreateDto.Login), "Логин должен состоять только из цифр или букв");
+        if (!ModelState.IsValid)
+            return UnprocessableEntity(ModelState);
+
+        var userEntity = mapper.Map<UserEntity>(userDto);
+        var value = userRepository.Insert(userEntity);
+        return CreatedAtRoute(
+            nameof(GetUserById),
+            new { userId = userEntity.Id },
+            value.Id);
     }
 }

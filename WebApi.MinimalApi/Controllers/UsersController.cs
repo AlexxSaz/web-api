@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.MinimalApi.Domain;
 using WebApi.MinimalApi.Models;
@@ -67,6 +68,27 @@ public class UsersController : Controller
                 nameof(GetUserById),
                 new { userId = userEntity.Id },
                 userEntity.Id);
+        return NoContent();
+    }
+    
+    [HttpPatch("{userId}")]
+    [Produces("application/json", "application/xml")]
+    public IActionResult PartiallyUpdateUser([FromRoute] Guid userId, [FromBody] JsonPatchDocument<UserToUpdateDto>? patchDoc)
+    {
+        if (patchDoc == null) return BadRequest();
+        
+        var userEntity = userRepository.FindById(userId);
+        if (userEntity == null) return NotFound();
+        
+        var updateDto = new UserToUpdateDto();
+        patchDoc.ApplyTo(updateDto, ModelState);
+        
+        if (!TryValidateModel(updateDto)) 
+            return UnprocessableEntity(ModelState);
+        
+        mapper.Map(updateDto, userEntity);
+        userRepository.Update(userEntity);
+        
         return NoContent();
     }
 }

@@ -130,6 +130,13 @@ public class UsersController : Controller
 
         return Ok(page);
     }
+    
+    [HttpOptions]
+    public IActionResult GetUsersOptions()
+    {
+        Response.Headers.Append("Allow", "POST,GET,OPTIONS");
+        return Ok();
+    }
 
     private string? CreateGetUsersUri(int pageNumber, int pageSize)
     {

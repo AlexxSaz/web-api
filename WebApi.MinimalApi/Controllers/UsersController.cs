@@ -103,4 +103,41 @@ public class UsersController : Controller
 
         return NoContent();
     }
+
+    [HttpGet(Name = nameof(GetUsers))]
+    [ProducesResponseType(typeof(IEnumerable<UserDto>), 200)]
+    public ActionResult<IEnumerable<UserDto>> GetUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+    {
+        pageNumber = Math.Max(pageNumber, 1);
+        pageSize = Math.Min(Math.Max(pageSize, 1), 20);
+
+        var page = userRepository.GetPage(pageNumber, pageSize);
+
+        var paginationHeader = new
+        {
+            previousPageLink = page.HasPrevious
+                ? CreateGetUsersUri(page.CurrentPage - 1, page.PageSize)
+                : null,
+            nextPageLink = page.HasNext
+                ? CreateGetUsersUri(page.CurrentPage + 1, page.PageSize)
+                : null,
+            totalCount = page.TotalCount,
+            pageSize = page.PageSize,
+            currentPage = page.CurrentPage,
+            totalPages = page.TotalPages
+        };
+        Response.Headers.Append("X-Pagination", JsonConvert.SerializeObject(paginationHeader));
+
+        return Ok(page);
+    }
+
+    private string? CreateGetUsersUri(int pageNumber, int pageSize)
+    {
+        return linkGenerator.GetUriByRouteValues(HttpContext, nameof(GetUsers),
+            new
+            {
+                pageNumber,
+                pageSize
+            });
+    }
 }
